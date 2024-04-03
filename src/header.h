@@ -13,6 +13,9 @@ IPAddress ipHost(192, 168, 100, 88);
 const char* mqttServer = "broker.emqx.io";
 const int portMqtt = 1883;
 
+unsigned long lastUpdate = 0;
+unsigned long updateInterval = 5000;
+
 
 bool isOn = false;
 bool isHot = false;
@@ -97,7 +100,7 @@ void reconnect() {
 
 void httpPostTempHum(float hum, float temp, uint64_t chipid, String sensorId) {
   HTTPClient http;
-  http.begin("http://" + ipHost.toString() + ":8080/meteorUS/temphum");
+  http.begin("http://" + ipHost.toString() + ":80/meteorUS/temphum");
   http.addHeader("Content-Type", "application/json");
   String httpRequestData = "{\"temperature\":" + String(temp) + ",\"humidity\":" + String(hum) + ",\"boardId\":" + String(chipid) + ",\"sensorId\":\"" + sensorId +"\"}";
   http.POST(httpRequestData);
@@ -106,7 +109,7 @@ void httpPostTempHum(float hum, float temp, uint64_t chipid, String sensorId) {
 
 void httpPostActuator(bool isOn, bool isHot, bool isCold, uint64_t chipid, String sensorId) {
   HTTPClient http;
-  http.begin("http://" + ipHost.toString() + ":8080/meteorUS/actuator");
+  http.begin("http://" + ipHost.toString() + ":80/meteorUS/actuator");
   http.addHeader("Content-Type", "application/json");
   String isOnToString = isOn ? "true" : "false";
   String isHotToString = isHot ? "true" : "false";
@@ -118,7 +121,7 @@ void httpPostActuator(bool isOn, bool isHot, bool isCold, uint64_t chipid, Strin
 
 void httpPostPressure(float press, float altitude, uint64_t chipid, String sensorId) {
   HTTPClient http;
-  http.begin("http://" + ipHost.toString() + ":8080/meteorUS/pressure");
+  http.begin("http://" + ipHost.toString() + ":80/meteorUS/pressure");
   http.addHeader("Content-Type", "application/json");
   String httpRequestData = "{\"pressure\":" + String(press) + ",\"altitude\":" + String(altitude) + ",\"boardId\":" + String(chipid) + ",\"sensorId\":\"" + sensorId + "\"}";
   http.POST(httpRequestData);

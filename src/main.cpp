@@ -1,17 +1,19 @@
 #include "header.h"
 
-
-
-void setup() {
+void setup()
+{
   Serial.begin(9600);
   delay(4000);
 
   dht.begin();
   Wire.begin();
-  if (!bmp.begin()) {
-     Serial.println(F("Could not find a valid BMP085 sensor, check wiring!"));
-     //while (1);
-  } else {
+  if (!bmp.begin())
+  {
+    Serial.println(F("Could not find a valid BMP085 sensor, check wiring!"));
+    // while (1);
+  }
+  else
+  {
     Serial.println(F("Find a valid BMP sensor"));
   }
 
@@ -26,22 +28,25 @@ void setup() {
   digitalWrite(LEDWIFIPIN, LOW);
   digitalWrite(LEDGOODPIN, HIGH);
 
-  if (WiFi.status() != WL_CONNECTED) {
+  if (WiFi.status() != WL_CONNECTED)
+  {
     launchWiFiManager();
   }
 
   Serial.println("Connected to WiFi");
   digitalWrite(LEDWIFIPIN, LOW);
 
-  if (WiFi.status() == WL_CONNECTED) {
+  if (WiFi.status() == WL_CONNECTED)
+  {
     HTTPClient http;
-    http.begin("http://" + ipHost.toString() + ":8080/meteorUS/board/" + String(chipid));
+    http.begin("http://" + ipHost.toString() + ":80/meteorUS/board/" + String(chipid));
     int httpResponseCode = http.GET();
     http.end();
     Serial.print("Geteando board:");
     Serial.println(httpResponseCode);
-    if (httpResponseCode == 404) {
-      http.begin("http://" + ipHost.toString() + ":8080/meteorUS/board");
+    if (httpResponseCode == 404)
+    {
+      http.begin("http://" + ipHost.toString() + ":80/meteorUS/board");
       http.addHeader("Content-Type", "application/json");
       String httpRequestData = "{\"boardId\":" + String(chipid) + "}";
       int httpResponseCode1 = http.POST(httpRequestData);
@@ -50,10 +55,11 @@ void setup() {
       http.end();
     }
 
-    http.begin("http://" + ipHost.toString() + ":8080/meteorUS/actuator/" + String(chipid) + "/" + sensorId1);
+    http.begin("http://" + ipHost.toString() + ":80/meteorUS/actuator/" + String(chipid) + "/" + sensorId1);
     httpResponseCode = http.GET();
 
-    if (httpResponseCode > 0) {
+    if (httpResponseCode > 0)
+    {
       String response = http.getString();
       DynamicJsonDocument doc(1024);
       deserializeJson(doc, response);
@@ -70,7 +76,7 @@ void setup() {
 
     client.setServer(mqttServer, portMqtt);
     client.setCallback(callback);
-    
+
     Serial.print("Maxtemp: ");
     Serial.println(maxTemp);
     Serial.print("MinTemp: ");
@@ -79,60 +85,70 @@ void setup() {
   }
 }
 
-
-void loop() {
-  if (WiFi.status() != WL_CONNECTED) {
+void loop()
+{
+  if (WiFi.status() != WL_CONNECTED)
+  {
     Serial.println("WiFi connection lost. Launching WiFi Manager...");
     launchWiFiManager();
     digitalWrite(LEDWIFIPIN, LOW);
   }
 
-  if (!client.connected()) {
+  if (!client.connected())
+  {
     Serial.println("MQTT connection lost. Reconnecting...");
     reconnect();
   }
 
-  if (receivedMQTTMessage) {
+  if (receivedMQTTMessage)
+  {
     Serial.println("Received MQTT message.");
     receivedMQTTMessage = false;
   }
 
-  
+  unsigned long currentMillis = millis();
 
-  float hum = dht.readHumidity();
-  float temp = dht.readTemperature();
-  float pressure = bmp.readPressure() / 100;
-  float altitude = bmp.readAltitude();
+  if (currentMillis - lastUpdate > updateInterval)
+  {
+    lastUpdate = currentMillis;
+    float hum = dht.readHumidity();
+    float temp = dht.readTemperature();
+    float pressure = bmp.readPressure() / 100;
+    float altitude = bmp.readAltitude();
 
-  Serial.println(temp);
-  Serial.println(hum);
-  Serial.println(pressure);
-  Serial.println(altitude);
-  delay(5000);
-  httpPostTempHum(hum, temp, chipid, sensorId1);
-  httpPostPressure(pressure, altitude, chipid, sensorId2);
-  client.loop();
-
-  if (((temp > maxTemp) || (temp < minTemp)) && (!isOn || firstRun)) {
-    isOn = true;
-    firstRun = false;
-    digitalWrite(LEDGOODPIN, LOW);
-    if (temp > maxTemp) {
-      isHot = true;
-      isCold = false;
-      digitalWrite(LEDCOLDPIN, LOW);
-      playHotAlarm();
-      digitalWrite(LEDHOTPIN, HIGH);
-    } else {
-      isHot = false;
-      isCold = true;
-      digitalWrite(LEDHOTPIN, LOW);
-      playColdAlarm();
-      digitalWrite(LEDCOLDPIN, HIGH);
+    Serial.println(temp);
+    Serial.println(hum);
+    Serial.println(pressure);
+    Serial.println(altitude);
+    httpPostTempHum(hum, temp, chipid, sensorId1);
+    httpPostPressure(pressure, altitude, chipid, sensorId2);
+    if (((temp > maxTemp) || (temp < minTemp)) && (!isOn || firstRun))
+    {
+      isOn = true;
+      firstRun = false;
+      digitalWrite(LEDGOODPIN, LOW);
+      if (temp > maxTemp)
+      {
+        isHot = true;
+        isCold = false;
+        digitalWrite(LEDCOLDPIN, LOW);
+        playHotAlarm();
+        digitalWrite(LEDHOTPIN, HIGH);
       }
-    httpPostActuator(isOn, isHot, isCold, chipid, sensorId1);
-  } else if ((temp <= maxTemp) && (temp >= minTemp)) {
-      if (isOn) {
+      else
+      {
+        isHot = false;
+        isCold = true;
+        digitalWrite(LEDHOTPIN, LOW);
+        playColdAlarm();
+        digitalWrite(LEDCOLDPIN, HIGH);
+      }
+      httpPostActuator(isOn, isHot, isCold, chipid, sensorId1);
+    }
+    else if ((temp <= maxTemp) && (temp >= minTemp))
+    {
+      if (isOn)
+      {
         digitalWrite(LEDCOLDPIN, LOW);
         digitalWrite(LEDHOTPIN, LOW);
         digitalWrite(LEDGOODPIN, HIGH);
@@ -142,4 +158,7 @@ void loop() {
         httpPostActuator(isOn, isHot, isCold, chipid, sensorId1);
       }
     }
+  }
+
+  client.loop();
 }
