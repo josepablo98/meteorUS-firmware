@@ -10,13 +10,13 @@
 
 IPAddress ipHost(192, 168, 100, 88);
 
-const char* mqttServer = "broker.emqx.io";
+const char *mqttServer = "broker.emqx.io";
 const int portMqtt = 1883;
 
 unsigned long lastUpdate = 0;
 unsigned long updateInterval = 5000;
 
-
+bool isOnLast = false;
 bool isOn = false;
 bool isHot = false;
 bool isCold = false;
@@ -44,40 +44,22 @@ uint64_t chipid = ESP.getEfuseMac();
 String sensorId1 = String(chipid) + "_1";
 String sensorId2 = String(chipid) + "_2";
 
-void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.println("Message received from MQTT server:");
-  Serial.print("Topic: ");
-  Serial.println(topic);
-  Serial.print("Payload: ");
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
-  }
-  Serial.println();
-  Serial.println("Before atof");
+void callback(char *topic, byte *payload, unsigned int length) {
+  char messageTemp[length + 1];
+  memcpy(messageTemp, payload, length);
+  messageTemp[length] = '\0';
 
-  for (int i = 0; i < length; i++) {
-    if (!isDigit(payload[i]) && payload[i] != '.') {
-      Serial.println("Invalid payload");
-      return;
-    }
-  }
+  String message = String(messageTemp);
 
-  if (strcmp(topic, "setMaxTemperature") == 0) {
-    maxTemp = atof((char *)payload);
-    EEPROM.begin(8);
-    EEPROM.writeFloat(0, maxTemp);
-    EEPROM.commit();
-    EEPROM.end();
-  } else if (strcmp(topic, "setMinTemperature") == 0) {
-    minTemp = atof((char *)payload);
-    EEPROM.begin(8);
-    EEPROM.writeFloat(4, minTemp);
-    EEPROM.commit();
-    EEPROM.end();
+  if (strcmp(topic, "setIsOn") == 0) {
+    isOn = strcmp(message.c_str(), "true") == 0;
   }
-
-  Serial.println("After atof");
-  Serial.println("End of callback");
+  else if (strcmp(topic, "setIsHot") == 0) {
+    isHot = strcmp(message.c_str(), "true") == 0;
+  }
+  else if (strcmp(topic, "setIsCold") == 0) {
+    isCold = strcmp(message.c_str(), "true") == 0;
+  }
 
   receivedMQTTMessage = true;
 }
@@ -87,9 +69,11 @@ void reconnect() {
     Serial.print("Attempting MQTT connection...");
     if (client.connect(String(chipid).c_str())) {
       Serial.println("Connected");
-      client.subscribe("setMaxTemperature");
-      client.subscribe("setMinTemperature");
-    } else {
+      client.subscribe("setIsOn");
+      client.subscribe("setIsHot");
+      client.subscribe("setIsCold");
+    }
+    else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
       Serial.println(" try again in 5 seconds");
@@ -102,7 +86,7 @@ void httpPostTempHum(float hum, float temp, uint64_t chipid, String sensorId) {
   HTTPClient http;
   http.begin("http://" + ipHost.toString() + ":80/meteorUS/temphum");
   http.addHeader("Content-Type", "application/json");
-  String httpRequestData = "{\"temperature\":" + String(temp) + ",\"humidity\":" + String(hum) + ",\"boardId\":" + String(chipid) + ",\"sensorId\":\"" + sensorId +"\"}";
+  String httpRequestData = "{\"temperature\":" + String(temp) + ",\"humidity\":" + String(hum) + ",\"boardId\":" + String(chipid) + ",\"sensorId\":\"" + sensorId + "\"}";
   http.POST(httpRequestData);
   http.end();
 }
@@ -114,7 +98,7 @@ void httpPostActuator(bool isOn, bool isHot, bool isCold, uint64_t chipid, Strin
   String isOnToString = isOn ? "true" : "false";
   String isHotToString = isHot ? "true" : "false";
   String isColdToString = isCold ? "true" : "false";
-  String httpRequestData = "{\"isOn\":" + isOnToString + ",\"isHot\":" + isHotToString + ",\"isCold\":" + isColdToString + ",\"boardId\":" + String(chipid) + ",\"sensorId\":\"" + sensorId +"\"}";
+  String httpRequestData = "{\"isOn\":" + isOnToString + ",\"isHot\":" + isHotToString + ",\"isCold\":" + isColdToString + ",\"boardId\":" + String(chipid) + ",\"sensorId\":\"" + sensorId + "\"}";
   http.POST(httpRequestData);
   http.end();
 }
@@ -130,7 +114,7 @@ void httpPostPressure(float press, float altitude, uint64_t chipid, String senso
 void launchWiFiManager() {
   WiFiManager wifiManager;
   digitalWrite(LEDWIFIPIN, HIGH);
-  if (!wifiManager.autoConnect("AutoConnectAP")) {
+  if (!wifiManager.autoConnect("meteorUS")) {
     Serial.println("Failed to connect, please connect to the 'AutoConnectAP' network, open a browser and navigate to 192.168.4.1 to enter WiFi credentials.");
     delay(3000);
     ESP.restart();
@@ -138,8 +122,9 @@ void launchWiFiManager() {
 }
 
 void playHotAlarm() {
+  digitalWrite(LEDGOODPIN, LOW);
   unsigned long startMillis = millis();
-  while(millis() - startMillis < 10000) {
+  while (millis() - startMillis < 10000) {
     for (int i = 0; i < 350; i++) {
       digitalWrite(BUZZERPIN, HIGH);
       digitalWrite(LEDHOTPIN, HIGH);
@@ -156,11 +141,13 @@ void playHotAlarm() {
       delay(2);
     }
   }
+  digitalWrite(LEDHOTPIN, HIGH);
 }
 
 void playColdAlarm() {
+  digitalWrite(LEDGOODPIN, LOW);
   unsigned long startMillis = millis();
-  while(millis() - startMillis < 10000) {
+  while (millis() - startMillis < 10000) {
     for (int i = 0; i < 350; i++) {
       digitalWrite(BUZZERPIN, HIGH);
       digitalWrite(LEDCOLDPIN, HIGH);
@@ -177,4 +164,5 @@ void playColdAlarm() {
       delay(2);
     }
   }
+  digitalWrite(LEDCOLDPIN, HIGH);
 }
