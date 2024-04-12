@@ -74,7 +74,7 @@ void loop() {
     digitalWrite(LEDWIFIPIN, LOW);
   }
 
-  if (!client.connected())
+  if (!client.connected()) {
     Serial.println("MQTT connection lost. Reconnecting...");
     reconnect();
   }

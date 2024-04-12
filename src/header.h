@@ -10,7 +10,7 @@
 
 IPAddress ipHost(192, 168, 100, 88);
 
-const char *mqttServer = "broker.emqx.io";
+const char *mqttServer = "broker.hivemq.com";
 const int portMqtt = 1883;
 
 unsigned long lastUpdate = 0;
@@ -22,9 +22,6 @@ bool isHot = false;
 bool isCold = false;
 bool firstRun = true;
 bool receivedMQTTMessage = false;
-
-float maxTemp;
-float minTemp;
 
 #define LEDGOODPIN 4
 #define LEDWIFIPIN 16
