@@ -10,9 +10,9 @@
 
 IPAddress ipHost(192, 168, 100, 88);
 
-const char *mqttServer = "broker.hivemq.com";
+const char* mqttServer = "broker.hivemq.com";
 const int portMqtt = 1883;
-
+const int groupMqttId = 1;
 unsigned long lastUpdate = 0;
 unsigned long updateInterval = 5000;
 
@@ -48,13 +48,13 @@ void callback(char *topic, byte *payload, unsigned int length) {
 
   String message = String(messageTemp);
 
-  if (strcmp(topic, "setIsOn") == 0) {
+  if (strcmp(topic, ("setIsOn/" + String(groupMqttId)).c_str()) == 0) {
     isOn = strcmp(message.c_str(), "true") == 0;
   }
-  else if (strcmp(topic, "setIsHot") == 0) {
+  else if (strcmp(topic, ("setIsHot/" + String(groupMqttId)).c_str()) == 0) {
     isHot = strcmp(message.c_str(), "true") == 0;
   }
-  else if (strcmp(topic, "setIsCold") == 0) {
+  else if (strcmp(topic, ("setIsCold/" + String(groupMqttId)).c_str()) == 0) {
     isCold = strcmp(message.c_str(), "true") == 0;
   }
 
@@ -66,9 +66,9 @@ void reconnect() {
     Serial.print("Attempting MQTT connection...");
     if (client.connect(String(chipid).c_str())) {
       Serial.println("Connected");
-      client.subscribe("setIsOn");
-      client.subscribe("setIsHot");
-      client.subscribe("setIsCold");
+      client.subscribe(("setIsOn/" + String(groupMqttId)).c_str());
+      client.subscribe(("setIsHot/" + String(groupMqttId)).c_str());
+      client.subscribe(("setIsCold/" + String(groupMqttId)).c_str());
     }
     else {
       Serial.print("failed, rc=");
@@ -83,7 +83,7 @@ void httpPostTempHum(float hum, float temp, uint64_t chipid, String sensorId) {
   HTTPClient http;
   http.begin("http://" + ipHost.toString() + ":80/meteorUS/temphum");
   http.addHeader("Content-Type", "application/json");
-  String httpRequestData = "{\"temperature\":" + String(temp) + ",\"humidity\":" + String(hum) + ",\"boardId\":" + String(chipid) + ",\"sensorId\":\"" + sensorId + "\"}";
+  String httpRequestData = "{\"temperature\":" + String(temp) + ",\"humidity\":" + String(hum) + ",\"boardId\":" + String(chipid) + ",\"sensorId\":\"" + sensorId + "\",\"groupId\":" + String(groupMqttId) + "}";
   http.POST(httpRequestData);
   http.end();
 }
@@ -95,7 +95,7 @@ void httpPostActuator(bool isOn, bool isHot, bool isCold, uint64_t chipid, Strin
   String isOnToString = isOn ? "true" : "false";
   String isHotToString = isHot ? "true" : "false";
   String isColdToString = isCold ? "true" : "false";
-  String httpRequestData = "{\"isOn\":" + isOnToString + ",\"isHot\":" + isHotToString + ",\"isCold\":" + isColdToString + ",\"boardId\":" + String(chipid) + ",\"sensorId\":\"" + sensorId + "\"}";
+  String httpRequestData = "{\"isOn\":" + isOnToString + ",\"isHot\":" + isHotToString + ",\"isCold\":" + isColdToString + ",\"boardId\":" + String(chipid) + ",\"sensorId\":\"" + sensorId + "\",\"groupId\":" + String(groupMqttId) + "}";
   http.POST(httpRequestData);
   http.end();
 }
@@ -104,7 +104,7 @@ void httpPostPressure(float press, float altitude, uint64_t chipid, String senso
   HTTPClient http;
   http.begin("http://" + ipHost.toString() + ":80/meteorUS/pressure");
   http.addHeader("Content-Type", "application/json");
-  String httpRequestData = "{\"pressure\":" + String(press) + ",\"altitude\":" + String(altitude) + ",\"boardId\":" + String(chipid) + ",\"sensorId\":\"" + sensorId + "\"}";
+  String httpRequestData = "{\"pressure\":" + String(press) + ",\"altitude\":" + String(altitude) + ",\"boardId\":" + String(chipid) + ",\"sensorId\":\"" + sensorId + "\",\"groupId\":" + String(groupMqttId) + "}";
   http.POST(httpRequestData);
   http.end();
 }

@@ -41,7 +41,7 @@ void setup() {
     if (httpResponseCode == 404) {
       http.begin("http://" + ipHost.toString() + ":80/meteorUS/board");
       http.addHeader("Content-Type", "application/json");
-      String httpRequestData = "{\"boardId\":" + String(chipid) + "}";
+      String httpRequestData = "{\"boardId\":" + String(chipid) + ",\"groupId\":" + String(groupMqttId) + "}";
       int httpResponseCode1 = http.POST(httpRequestData);
       Serial.print("Board a la BD:");
       Serial.println(httpResponseCode1);
