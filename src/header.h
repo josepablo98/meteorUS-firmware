@@ -10,7 +10,7 @@
 
 IPAddress ipHost(192, 168, 100, 88);
 
-const char* mqttServer = "broker.hivemq.com";
+const char* mqttServer = ipHost.toString().c_str();
 const int portMqtt = 1883;
 const int groupMqttId = 1;
 unsigned long lastUpdate = 0;
@@ -20,8 +20,8 @@ bool isOnLast = false;
 bool isOn = false;
 bool isHot = false;
 bool isCold = false;
-bool firstRun = true;
 bool receivedMQTTMessage = false;
+bool firstRun = true;
 
 #define LEDGOODPIN 4
 #define LEDWIFIPIN 16

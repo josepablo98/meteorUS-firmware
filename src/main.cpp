@@ -30,6 +30,7 @@ void setup() {
 
   Serial.println("Connected to WiFi");
   digitalWrite(LEDWIFIPIN, LOW);
+  Serial.println(mqttServer);
 
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
