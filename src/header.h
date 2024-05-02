@@ -1,6 +1,5 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include <EEPROM.h>
 #include <DHT.h>
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
